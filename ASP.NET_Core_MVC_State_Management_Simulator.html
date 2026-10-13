@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASP.NET Core MVC State Management Simulator</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',system-ui,-apple-system,sans-serif;}
+  :root{
+    --bg:#f8fafc;--surface:#fff;--surface-2:#f1f5f9;--text:#0f172a;
+    --text-muted:#475569;--border:#e2e8f0;--primary:#2563eb;--primary-light:#dbeafe;
+    --success:#16a34a;--warning:#eab308;--danger:#dc2626;--code-bg:#1e293b;
+    --code-text:#e2e8f0;--radius:12px;--radius-sm:8px;
+  }
+  body.dark{
+    --bg:#0b1120;--surface:#1e293b;--surface-2:#0f172a;--text:#f1f5f9;
+    --text-muted:#94a3b8;--border:#334155;--primary:#3b82f6;--primary-light:#1e3a8a;
+    --code-bg:#020617;--code-text:#e2e8f0;
+  }
+  body{background:var(--bg);color:var(--text);line-height:1.5;min-height:100vh;font-size:15px;}
+  .app{display:flex;}
+  .sidebar{width:250px;background:var(--surface);border-right:1px solid var(--border);
+    padding:1.5rem .75rem;position:sticky;top:0;height:100vh;overflow-y:auto;flex-shrink:0;}
+  .sidebar h2{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;
+    color:var(--text-muted);margin:1.25rem 0 .5rem .75rem;}
+  .sidebar nav a{display:block;padding:.45rem .75rem;color:var(--text);text-decoration:none;
+    border-radius:var(--radius-sm);font-size:.85rem;}
+  .sidebar nav a:hover{background:var(--surface-2);}
+  .main-content{flex:1;padding:2rem;max-width:1300px;margin:0 auto;width:100%;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;
+    flex-wrap:wrap;gap:1rem;margin-bottom:2rem;}
+  .header h1{font-size:1.9rem;font-weight:700;
+    background:linear-gradient(135deg,var(--primary),#7c3aed);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+  .header .subtitle{color:var(--text-muted);font-size:.95rem;margin-top:.25rem;}
+  .badge{display:inline-block;background:var(--primary-light);color:var(--primary);
+    font-size:.7rem;font-weight:600;padding:.2rem .7rem;border-radius:999px;margin-top:.5rem;}
+  .badge-line{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-top:.5rem;}
+  .version-select{display:flex;gap:.4rem;align-items:center;font-size:.8rem;}
+  .version-select select{padding:.2rem .5rem;border-radius:6px;border:1px solid var(--border);
+    background:var(--surface-2);color:var(--text);font-size:.8rem;}
+  .theme-toggle{background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    padding:.5rem 1rem;border-radius:var(--radius-sm);cursor:pointer;font-size:.85rem;}
+  .theme-toggle:hover{border-color:var(--primary);}
+  .btn-row{display:flex;gap:.5rem;flex-wrap:wrap;}
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:1rem;margin-bottom:2rem;}
+  .card{background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);padding:1.25rem;}
+  .card h3{font-size:.75rem;text-transform:uppercase;color:var(--text-muted);margin-bottom:.35rem;}
+  .card p{font-size:.95rem;font-weight:600;}
+  .diagram{display:flex;flex-direction:column;align-items:center;gap:.2rem;
+    background:var(--surface-2);border-radius:var(--radius);padding:1.5rem;
+    margin-bottom:2rem;font-size:.9rem;font-weight:500;border:1px dashed var(--border);}
+  .simulator-layout{display:grid;grid-template-columns:320px 1fr;gap:1.5rem;margin-bottom:2rem;}
+  @media (max-width:900px){.simulator-layout{grid-template-columns:1fr;}}
+  .sim-panel{background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);padding:1.5rem;margin-bottom:1rem;}
+  .sim-panel h3{font-size:1.05rem;margin-bottom:1rem;}
+  select,input[type="text"]{width:100%;padding:.55rem .8rem;border:1px solid var(--border);
+    border-radius:var(--radius-sm);background:var(--surface-2);color:var(--text);
+    font-size:.85rem;margin-bottom:1rem;}
+  select:focus,input:focus{outline:none;border-color:var(--primary);}
+  .btn{display:inline-flex;align-items:center;justify-content:center;
+    padding:.5rem .9rem;border-radius:var(--radius-sm);border:1px solid var(--border);
+    background:var(--surface-2);color:var(--text);font-size:.8rem;font-weight:500;
+    cursor:pointer;white-space:nowrap;transition:.15s;}
+  .btn:hover{background:var(--primary-light);border-color:var(--primary);}
+  .btn-primary{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .btn-primary:hover{background:#1d4ed8;}
+  .btn-group{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;}
+  .sim-status{background:var(--surface-2);border-radius:var(--radius-sm);padding:.9rem;
+    font-size:.8rem;min-height:55px;border-left:3px solid var(--primary);
+    margin-top:.5rem;font-family:'Courier New',monospace;}
+  pre{background:var(--code-bg);color:var(--code-text);padding:1rem;
+    border-radius:var(--radius-sm);overflow-x:auto;font-size:.78rem;
+    line-height:1.6;font-family:'Courier New',monospace;margin:.5rem 0;}
+  .code-header{display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:.25rem;margin-top:.75rem;}
+  .code-header span{font-size:.68rem;color:var(--text-muted);text-transform:uppercase;}
+  .copy-btn{background:transparent;border:1px solid var(--border);color:var(--text-muted);
+    padding:.15rem .5rem;border-radius:4px;font-size:.68rem;cursor:pointer;}
+  .copy-btn:hover{border-color:var(--primary);color:var(--primary);}
+  .accordion-item{border:1px solid var(--border);border-radius:var(--radius-sm);
+    margin-bottom:.5rem;overflow:hidden;}
+  .accordion-header{background:var(--surface);padding:.8rem 1.1rem;cursor:pointer;
+    font-weight:600;display:flex;justify-content:space-between;align-items:center;
+    font-size:.9rem;user-select:none;}
+  .accordion-header:hover{background:var(--surface-2);}
+  .accordion-body{padding:.75rem 1.1rem 1rem;background:var(--surface);
+    font-size:.85rem;color:var(--text-muted);display:none;}
+  .accordion-body.open{display:block;}
+  .table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);
+    margin-bottom:1.5rem;}
+  table{width:100%;border-collapse:collapse;font-size:.82rem;min-width:600px;}
+  th,td{padding:.65rem .9rem;text-align:left;border-bottom:1px solid var(--border);}
+  th{background:var(--surface-2);font-weight:600;font-size:.72rem;
+    text-transform:uppercase;color:var(--text-muted);}
+  tr:hover td{background:var(--surface-2);}
+  .quiz-question{background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);padding:1.1rem;margin-bottom:1rem;}
+  .quiz-option{display:block;padding:.55rem .9rem;margin:.3rem 0;
+    border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;
+    font-size:.85rem;transition:.15s;}
+  .quiz-option:hover{border-color:var(--primary);background:var(--primary-light);}
+  .quiz-option.correct{background:#dcfce7;border-color:var(--success);}
+  .quiz-option.incorrect{background:#fee2e2;border-color:var(--danger);}
+  .quiz-feedback{margin-top:.5rem;font-size:.82rem;font-weight:500;}
+  .flashcard{background:var(--surface);border:2px solid var(--border);
+    border-radius:var(--radius);padding:2rem;min-height:170px;display:flex;
+    flex-direction:column;align-items:center;justify-content:center;text-align:center;
+    cursor:pointer;font-size:1.05rem;margin:1.5rem 0;transition:.2s;}
+  .flashcard:hover{border-color:var(--primary);}
+  .flashcard .answer{color:var(--primary);font-weight:600;margin-top:1rem;font-size:.95rem;}
+  .flashcard-controls{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;}
+  .memory-map{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:1rem;margin:1.5rem 0;}
+  .memory-node{background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);padding:1rem;font-size:.82rem;}
+  .memory-node h4{margin-bottom:.5rem;font-size:.88rem;}
+  .memory-node ul{list-style:none;color:var(--text-muted);}
+  .memory-node li{padding:.15rem 0;border-bottom:1px dashed var(--border);}
+  .memory-node li:last-child{border-bottom:none;}
+  .warning-card{background:#fef2f2;border:1px solid #fecaca;border-left:5px solid var(--danger);
+    border-radius:var(--radius);padding:1.1rem;margin:1.5rem 0;color:#991b1b;font-size:.85rem;}
+  body.dark .warning-card{background:#450a0a;border-color:#7f1d1d;color:#fca5a5;}
+  .cheat-item{padding:.55rem 0;border-bottom:1px solid var(--border);font-size:.85rem;}
+  .cheat-item strong{color:var(--primary);display:inline-block;min-width:130px;}
+  .hidden{display:none !important;}
+  .text-muted{color:var(--text-muted);font-size:.82rem;}
+  .mt-2{margin-top:.5rem;}.mb-2{margin-bottom:.5rem;}.mb-3{margin-bottom:1rem;}.mt-3{margin-top:1rem;}
+  .beginner-note{background:#fefce8;border-left:4px solid var(--warning);
+    padding:.7rem 1rem;border-radius:var(--radius-sm);margin:.75rem 0;
+    font-size:.82rem;color:#854d0e;}
+  body.dark .beginner-note{background:#422006;color:#fde047;}
+  .example-badge{display:inline-block;font-size:.68rem;font-weight:600;
+    padding:.15rem .55rem;border-radius:999px;margin-left:.5rem;}
+  .badge-beginner{background:#dcfce7;color:#166534;}
+  .badge-intermediate{background:#fef9c3;color:#854d0e;}
+  .badge-advanced{background:#fee2e2;color:#991b1b;}
+  body.dark .badge-beginner{background:#14532d;color:#86efac;}
+  body.dark .badge-intermediate{background:#422006;color:#fde047;}
+  body.dark .badge-advanced{background:#450a0a;color:#fca5a5;}
+  .example-flow{background:var(--surface-2);padding:.7rem 1rem;
+    border-radius:var(--radius-sm);font-family:'Courier New',monospace;
+    font-size:.82rem;margin:.75rem 0;border-left:3px solid var(--primary);}
+  .example-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:.5rem;margin:.75rem 0;font-size:.82rem;}
+  .example-meta div{background:var(--surface-2);padding:.5rem .75rem;
+    border-radius:var(--radius-sm);}
+  .example-meta strong{color:var(--primary);}
+  .simulate-btn{background:var(--primary);color:#fff;border:none;
+    padding:.5rem 1rem;border-radius:var(--radius-sm);cursor:pointer;
+    font-size:.82rem;margin:.5rem 0;}
+  .simulate-btn:hover{background:#1d4ed8;}
+  .simulation-log{background:var(--surface-2);border-radius:var(--radius-sm);
+    padding:.7rem 1rem;font-family:'Courier New',monospace;font-size:.78rem;
+    min-height:40px;margin-top:.5rem;border-left:3px solid var(--primary);}
+  .lifecycle-stage{background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius-sm);padding:.65rem .9rem;margin-bottom:.3rem;
+    cursor:pointer;display:flex;align-items:center;gap:.7rem;font-size:.88rem;
+    transition:.15s;user-select:none;}
+  .lifecycle-stage:hover{border-color:var(--primary);}
+  .lifecycle-stage.active{border-color:var(--primary);background:var(--primary-light);font-weight:600;}
+  .lifecycle-num{background:var(--primary);color:#fff;width:22px;height:22px;
+    display:flex;align-items:center;justify-content:center;border-radius:50%;
+    font-size:.7rem;flex-shrink:0;}
+  .lifecycle-detail{background:var(--surface-2);padding:1rem;
+    border-radius:var(--radius-sm);margin-top:.5rem;font-size:.85rem;
+    border-left:3px solid var(--primary);min-height:70px;}
+  .tabs{display:flex;gap:.25rem;margin-bottom:1rem;flex-wrap:wrap;}
+  .tab{padding:.45rem .9rem;border-radius:var(--radius-sm);border:1px solid var(--border);
+    background:var(--surface);cursor:pointer;font-size:.82rem;}
+  .tab.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .tab-content{display:none;}
+  .tab-content.active{display:block;}
+  .yes{color:var(--danger);font-weight:600;}
+  .no{color:var(--success);font-weight:600;}
+  .maybe{color:var(--warning);font-weight:600;}
+  .flow-box{background:var(--surface-2);border-radius:var(--radius-sm);
+    padding:1rem;font-family:'Courier New',monospace;font-size:.82rem;
+    line-height:1.8;border-left:3px solid var(--primary);margin:.75rem 0;}
+  .redirect-step{padding:.35rem 0;font-family:'Courier New',monospace;font-size:.85rem;}
+  .redirect-step.indent{padding-left:2rem;color:var(--text-muted);}
+  h2{font-size:1.35rem;margin-bottom:.5rem;}
+  section{margin-top:2.5rem;}
+  @media (max-width:768px){
+    .app{flex-direction:column;}
+    .sidebar{width:100%;height:auto;position:relative;border-right:none;
+      border-bottom:1px solid var(--border);}
+    .sidebar nav{display:flex;flex-wrap:wrap;gap:.25rem;}
+    .sidebar nav a{padding:.35rem .6rem;font-size:.78rem;}
+    .main-content{padding:1rem;}
+    .header h1{font-size:1.4rem;}
+  }
+  @media print{
+    .sidebar,.theme-toggle,.btn,.simulate-btn,.flashcard-controls,.tabs,
+    .version-select,.btn-row,.simulator-layout,.diagram,.lifecycle-stage,
+    .lifecycle-detail{display:none !important;}
+    body{background:#fff;color:#000;}
+    .main-content{padding:0;}
+    .accordion-body{display:block !important;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <nav>
+      <h2>Navigation</h2>
+      <a href="#overview">1. Overview</a>
+      <a href="#categories">2. Categories</a>
+      <a href="#lifecycle">3. Lifecycle</a>
+      <a href="#simulator">4. Simulator</a>
+      <a href="#redirect">5. Redirect</a>
+      <a href="#cookie-session">6. Cookie+Session</a>
+      <a href="#multi-server">7. Multi-Server</a>
+      <a href="#security">8. Security</a>
+      <a href="#comparison">9. Comparison</a>
+      <a href="#scenarios">10. Scenarios</a>
+      <a href="#interview-beginner">11. Beginner Q</a>
+      <a href="#interview-intermediate">12. Intermediate Q</a>
+      <a href="#interview-advanced">13. Advanced Q</a>
+      <a href="#rapid-fire">14. Rapid Fire</a>
+      <a href="#quiz">15. Quiz</a>
+      <a href="#anki">16. Anki</a>
+      <a href="#cheatsheet">17. Cheat Sheet</a>
+      <a href="#complete-examples">18. Complete Code</a>
+      <a href="#anti-patterns">19. Anti-Patterns</a>
+      <a href="#decision-tree">20. Decision Tree</a>
+    </nav>
+  </aside>
+
+  <main class="main-content">
+    <header class="header" id="overview">
+      <div>
+        <h1>ASP.NET Core MVC State Management Simulator</h1>
+        <p class="subtitle">Understand State, Session, Cache &amp; Database visually</p>
+        <div class="badge-line">
+          <span class="badge">Beginner → Intermediate → Advanced</span>
+          <div class="version-select">
+            <label for="versionSelect">Version:</label>
+            <select id="versionSelect">
+              <option>.NET 8</option>
+              <option>.NET 9</option>
+              <option>.NET 10</option>
+            </select>
+          </div>
+        </div>
+        <p id="versionNote" class="text-muted" style="margin-top:.3rem;">Examples: .NET 8 / 9 / 10. Code compatible across versions.</p>
+      </div>
+      <div class="btn-row">
+        <button class="theme-toggle" id="themeToggle">🌙 Dark Mode</button>
+        <button class="theme-toggle" id="revisionToggle">📖 Revision Mode</button>
+        <button class="theme-toggle" id="printBtn">🖨️ Print Notes</button>
+      </div>
+    </header>
+
+    <div class="card-grid">
+      <div class="card"><h3>Client-Side State</h3><p>Cookie, LocalStorage, Query</p></div>
+      <div class="card"><h3>Server-Side State</h3><p>Session, Cache, DB</p></div>
+      <div class="card"><h3>Request</h3><p>Stateless HTTP</p></div>
+      <div class="card"><h3>Response</h3><p>HTTP Response</p></div>
+      <div class="card"><h3>Browser</h3><p>Client environment</p></div>
+      <div class="card"><h3>Server</h3><p>ASP.NET Core MVC</p></div>
+    </div>
+
+    <div class="diagram">
+      <span>🌐 Browser</span><span>↓</span>
+      <span>📨 HTTP Request</span><span>↓</span>
+      <span>🖥️ ASP.NET Core MVC Server</span><span>↓</span>
+      <span>🎮 Controller</span><span>↓</span>
+      <span>📄 View</span><span>↓</span>
+      <span>📤 HTTP Response</span><span>↓</span>
+      <span>🌐 Browser</span>
+    </div>
+
+    <!-- CATEGORIES -->
+    <section id="categories">
+      <h2>📂 Three Major Categories</h2>
+      <p class="text-muted mb-2">State management is not simply "client-side vs server-side."</p>
+      <div class="memory-map">
+        <div class="memory-node" style="border-left:4px solid var(--primary);">
+          <h4>A. Request / MVC View State</h4>
+          <ul><li>ViewData</li><li>ViewBag</li><li>TempData</li><li>ModelState</li></ul>
+          <p class="text-muted" style="margin-top:.5rem;font-size:.75rem;">Tied to the MVC request/response lifecycle. Not strictly client or server.</p>
+        </div>
+        <div class="memory-node" style="border-left:4px solid var(--warning);">
+          <h4>B. Client-Side State</h4>
+          <ul><li>Cookies</li><li>Query String</li><li>Hidden Fields</li><li>LocalStorage</li><li>SessionStorage</li></ul>
+          <p class="text-muted" style="margin-top:.5rem;font-size:.75rem;">Can be inspected or modified by the user.</p>
+        </div>
+        <div class="memory-node" style="border-left:4px solid var(--success);">
+          <h4>C. Server-Side / Persistent</h4>
+          <ul><li>Session</li><li>IMemoryCache</li><li>Distributed Cache / Redis</li><li>Claims</li><li>Database</li></ul>
+          <p class="text-muted" style="margin-top:.5rem;font-size:.75rem;">Temp server state, cache, auth, persistent data.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- LIFECYCLE -->
+    <section id="lifecycle">
+      <h2>🔄 ASP.NET Core Request Lifecycle</h2>
+      <p class="text-muted mb-2">Click each stage to see a short explanation.</p>
+      <div id="lifecycleStages"></div>
+      <div class="lifecycle-detail" id="lifecycleDetail">Click a stage above to see details.</div>
+    </section>
+
+    <!-- SIMULATOR -->
+    <section id="simulator">
+      <h2>⚙️ Interactive State Simulator</h2>
+      <div class="simulator-layout">
+        <div class="sim-panel">
+          <h3>Select State Management</h3>
+          <select id="stateSelect">
+            <option value="ViewData">ViewData</option>
+            <option value="ViewBag">ViewBag</option>
+            <option value="TempData">TempData</option>
+            <option value="ModelState">ModelState</option>
+            <option value="Hidden Field">Hidden Field</option>
+            <option value="Query String">Query String</option>
+            <option value="Cookie">Cookie</option>
+            <option value="LocalStorage">LocalStorage</option>
+            <option value="SessionStorage">SessionStorage</option>
+            <option value="Session">Session</option>
+            <option value="IMemoryCache">IMemoryCache</option>
+            <option value="Distributed Cache">Distributed Cache</option>
+            <option value="Database">Database</option>
+            <option value="Claims">Claims</option>
+          </select>
+          <div class="sim-status">
+            <strong>Where is the state stored?</strong><br>
+            <span id="storageLocation">Server / Request</span>
+          </div>
+          <div class="mt-3">
+            <button class="btn" id="beginnerToggle" style="width:100%;">🧸 Beginner Mode: OFF</button>
+          </div>
+          <div id="beginnerAnalogy" class="beginner-note hidden"></div>
+        </div>
+        <div class="sim-panel">
+          <h3>Simulator Controls</h3>
+          <div class="btn-group">
+            <button class="btn" id="setStateBtn">1. Set State</button>
+            <button class="btn" id="sendRequestBtn">2. Send Request</button>
+            <button class="btn" id="processBtn">3. Process</button>
+            <button class="btn" id="sendResponseBtn">4. Response</button>
+            <button class="btn" id="readStateBtn">5. Read State</button>
+            <button class="btn btn-primary" id="runFlowBtn">▶ Run Complete Flow</button>
+          </div>
+          <div style="display:flex;gap:.5rem;margin-bottom:.5rem;">
+            <input type="text" id="keyInput" value="username" placeholder="Key" style="flex:1;">
+            <input type="text" id="valueInput" value="Sonilal" placeholder="Value" style="flex:1;">
+          </div>
+          <div id="simLog" class="sim-status">Ready. Select a technique and run the flow.</div>
+        </div>
+      </div>
+      <div class="sim-panel">
+        <h3>📝 Code Example</h3>
+        <div id="codeExample"></div>
+      </div>
+    </section>
+
+    <!-- REDIRECT -->
+    <section id="redirect">
+      <h2>🔀 Redirect Simulator</h2>
+      <p class="text-muted mb-2">Why ViewData/ViewBag do not survive redirects, but TempData does.</p>
+      <div class="sim-panel">
+        <div class="flow-box">
+          <div class="redirect-step">▶ Request 1: POST /Product/Create</div>
+          <div class="redirect-step indent">↓ Controller sets TempData["Success"]</div>
+          <div class="redirect-step indent">↓ Return RedirectToAction("Index")</div>
+          <div class="redirect-step indent">↓ HTTP 302 Response sent to browser</div>
+          <div class="redirect-step" style="margin-top:.5rem;">▶ Request 2: GET /Product/Index</div>
+          <div class="redirect-step indent">↓ TempData["Success"] read</div>
+          <div class="redirect-step indent">↓ View renders message</div>
+        </div>
+        <p class="text-muted" style="margin-top:.5rem;">
+          <strong>Key point:</strong> ViewData and ViewBag only live for the current request.
+          When a redirect happens, the first request ends and those values are lost.
+          TempData is specifically designed to survive exactly one redirect.
+        </p>
+        <pre style="margin-top:.75rem;"><code>// Request 1
+TempData["SuccessMessage"] = "Product saved!";
+return RedirectToAction("Index");
+
+// Request 2
+@if (TempData["SuccessMessage"] != null)
+{
+    &lt;div class="alert"&gt;@TempData["SuccessMessage"]&lt;/div&gt;
+}</code></pre>
+      </div>
+    </section>
+
+    <!-- COOKIE + SESSION -->
+    <section id="cookie-session">
+      <h2>🍪 Cookie + Session Relationship</h2>
+      <div class="sim-panel">
+        <div class="flow-box">
+          Browser<br>
+          &nbsp;&nbsp;|<br>
+          &nbsp;&nbsp;| Session Cookie / Session ID<br>
+          &nbsp;&nbsp;↓<br>
+          ASP.NET Core<br>
+          &nbsp;&nbsp;|<br>
+          &nbsp;&nbsp;↓<br>
+          Session Store
+        </div>
+        <p class="text-muted">
+          Session data is stored server-side. The browser only stores a small
+          session identifier cookie that links the request to the correct server-side session.
+          <strong>The browser does NOT store the complete session object.</strong>
+        </p>
+      </div>
+    </section>
+
+    <!-- MULTI-SERVER -->
+    <section id="multi-server">
+      <h2>🖥️ Single Server vs Multi-Server</h2>
+      <div class="tabs" id="serverTabs">
+        <div class="tab active" data-tab="single">Single Server</div>
+        <div class="tab" data-tab="multi">Multiple Servers</div>
+      </div>
+      <div class="tab-content active" id="tab-single">
+        <div class="sim-panel">
+          <div class="flow-box">
+            Browser<br>
+            &nbsp;&nbsp;↓<br>
+            Load Balancer<br>
+            &nbsp;&nbsp;↓<br>
+            Server<br>
+            &nbsp;&nbsp;↓<br>
+            IMemoryCache / Session
+          </div>
+          <p class="text-muted">With a single server, local memory and session work fine.</p>
+        </div>
+      </div>
+      <div class="tab-content" id="tab-multi">
+        <div class="sim-panel">
+          <div class="flow-box">
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;┌── Server 1<br>
+            Browser → Load Balancer ├── Server 2<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── Server 3<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Shared Redis
+          </div>
+          <p class="text-muted mb-2">Local memory (IMemoryCache) is not shared between servers. Use a distributed cache like Redis.</p>
+          <div style="font-size:.82rem;line-height:1.8;">
+            <div><strong>Sticky sessions:</strong> LB routes the same user to the same server.</div>
+            <div><strong>Distributed session:</strong> Session data is stored in a shared cache.</div>
+            <div><strong>Redis:</strong> Shared in-memory data store used as distributed cache.</div>
+            <div><strong>Stateless architecture:</strong> Servers don't store client state.</div>
+            <div><strong>Horizontal scaling:</strong> Adding more servers to handle load.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECURITY -->
+    <section id="security">
+      <h2>🔒 Security Simulator</h2>
+      <p class="text-muted mb-2">Client-side state is input. Validate important values on the server.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Technique</th><th>Inspect?</th><th>Modify?</th><th>Trust?</th></tr></thead>
+          <tbody>
+            <tr><td>Query String</td><td class="yes">YES</td><td class="yes">YES</td><td class="no">NO</td></tr>
+            <tr><td>Hidden Field</td><td class="yes">YES</td><td class="yes">YES</td><td class="no">NO</td></tr>
+            <tr><td>Cookie</td><td class="yes">YES</td><td class="maybe">POTENTIALLY</td><td class="no">NO</td></tr>
+            <tr><td>LocalStorage</td><td class="yes">YES</td><td class="yes">YES</td><td class="no">NO</td></tr>
+            <tr><td>SessionStorage</td><td class="yes">YES</td><td class="yes">YES</td><td class="no">NO</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="sim-panel">
+        <h3>❌ Bad Practice</h3>
+        <pre><code>var price = Request.Query["price"];</code></pre>
+        <p class="text-muted">Do NOT trust this price directly.</p>
+        <h3 class="mt-3">✅ Better Practice</h3>
+        <pre><code>var product = await _db.Products.FindAsync(productId);
+var price = product.Price;</code></pre>
+        <p class="text-muted">Business-critical values should come from a trusted server-side source.</p>
+      </div>
+      <div class="sim-panel mt-2">
+        <h3>🍪 Cookie Security Options</h3>
+        <pre><code>new CookieOptions
+{
+    HttpOnly = true,
+    Secure = true,
+    SameSite = SameSiteMode.Lax
+}</code></pre>
+        <div style="font-size:.82rem;line-height:1.7;margin-top:.5rem;">
+          <div><strong>HttpOnly:</strong> JavaScript cannot normally access the cookie.</div>
+          <div><strong>Secure:</strong> Cookie is sent only over HTTPS.</div>
+          <div><strong>SameSite:</strong> Controls when cookies are sent in cross-site situations.</div>
+        </div>
+        <p class="text-muted mt-2">These settings reduce risk but do not make an application automatically secure.</p>
+      </div>
+      <div class="sim-panel mt-2">
+        <h3>⚠️ Security Matrix</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Risk</th><th>Example</th><th>Relevant State</th></tr></thead>
+            <tbody>
+              <tr><td>XSS</td><td>Malicious JavaScript</td><td>LocalStorage / Cookies</td></tr>
+              <tr><td>CSRF</td><td>Forged authenticated request</td><td>Cookies</td></tr>
+              <tr><td>Tampering</td><td>Changing hidden field</td><td>Hidden Field</td></tr>
+              <tr><td>URL manipulation</td><td>Changing id=10</td><td>Query String</td></tr>
+              <tr><td>Sensitive data exposure</td><td>Storing secrets in browser</td><td>Client State</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPARISON -->
+    <section id="comparison">
+      <h2>📊 Comparison Table</h2>
+      <input type="text" id="tableSearch" placeholder="Search techniques..." style="max-width:300px;">
+      <div class="table-wrap">
+        <table id="comparisonTable">
+          <thead><tr><th>Technique</th><th>Category</th><th>Location</th><th>Lifetime</th><th>Browser Sees?</th><th>Typical Use</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SCENARIOS -->
+    <section id="scenarios">
+      <h2>🌍 Real-World Scenarios</h2>
+      <div id="scenarioCards"></div>
+    </section>
+
+    <!-- INTERVIEWS -->
+    <section id="interview-beginner">
+      <h2>🎤 Beginner Interview Questions</h2>
+      <div id="beginnerInterview"></div>
+    </section>
+    <section id="interview-intermediate">
+      <h2>🎤 Intermediate Interview Questions</h2>
+      <div id="intermediateInterview"></div>
+    </section>
+    <section id="interview-advanced">
+      <h2>🎤 Advanced Interview Questions</h2>
+      <div id="advancedInterview"></div>
+    </section>
+
+    <!-- RAPID FIRE -->
+    <section id="rapid-fire">
+      <h2>⚡ Rapid-Fire Mode</h2>
+      <div class="sim-panel" style="max-width:600px;">
+        <div id="rapidFireQuestion" style="font-size:1.05rem;font-weight:600;margin-bottom:1rem;">Loading...</div>
+        <div id="rapidFireAnswer" class="hidden" style="background:var(--surface-2);padding:.7rem 1rem;border-radius:var(--radius-sm);margin-bottom:1rem;font-size:.88rem;"></div>
+        <div class="btn-group">
+          <button class="btn" id="revealAnswerBtn">Reveal</button>
+          <button class="btn" id="knowBtn">I Know</button>
+          <button class="btn" id="reviseBtn">Need Revision</button>
+          <button class="btn btn-primary" id="nextRapidBtn">Next</button>
+        </div>
+        <div id="rapidFireScore" style="font-size:.82rem;color:var(--text-muted);">Score: 0 known / 0 revision</div>
+      </div>
+    </section>
+
+    <!-- QUIZ -->
+    <section id="quiz">
+      <h2>🧠 Interview Quiz</h2>
+      <p class="text-muted mb-2">Score: <strong id="quizScore">0 / 20</strong></p>
+      <div id="quizContainer"></div>
+    </section>
+
+    <!-- ANKI -->
+    <section id="anki">
+      <h2>📇 Anki Flashcards</h2>
+      <p class="text-muted mb-2">Card <span id="cardCounter">1 / 41</span></p>
+      <div class="flashcard" id="flashcard">
+        <div id="cardFront">Loading...</div>
+        <div class="answer hidden" id="cardBack"></div>
+      </div>
+      <div class="flashcard-controls">
+        <button class="btn" id="showAnswerBtn">Show Answer</button>
+        <button class="btn" id="nextCardBtn">Next</button>
+        <button class="btn" id="prevCardBtn">Previous</button>
+        <button class="btn" id="shuffleCardsBtn">Shuffle</button>
+        <button class="btn" id="resetCardsBtn">Reset</button>
+        <button class="btn btn-primary" id="exportAnkiBtn">📥 Export CSV</button>
+      </div>
+    </section>
+
+    <!-- COMPLETE EXAMPLES -->
+    <section id="complete-examples">
+      <h2>📚 Complete ASP.NET Core MVC Code Examples</h2>
+      <p class="text-muted mb-3">Expand each technique for Program.cs, Controller, Razor, JavaScript, data flow, and security notes.</p>
+      <div id="completeExamplesContainer"></div>
+    </section>
+
+    <!-- ANTI-PATTERNS -->
+    <section id="anti-patterns">
+      <h2>🚫 Don't Do This</h2>
+      <div class="warning-card">
+        <strong>Don't store passwords in:</strong> Cookies, LocalStorage, SessionStorage, Hidden fields, Query strings.
+        <br><br>
+        <strong>Don't trust:</strong> Hidden fields, Query strings, Cookies, LocalStorage, Client-provided prices, Client-provided roles.
+        <br><br>
+        <strong>Don't use Session for:</strong> Permanent business data, Large datasets, Data that belongs in a database.
+        <br><br>
+        <strong>Don't use IMemoryCache as:</strong> A permanent database, A reliable cross-server data store.
+      </div>
+    </section>
+
+    <!-- STATE VS PERSISTENCE -->
+    <section id="state-persistence">
+      <h2>🗂️ State vs Persistence</h2>
+      <p class="text-muted mb-2">Not every place where data is stored is a state-management mechanism.</p>
+      <div class="flow-box">
+        Temporary request state<br>
+        &nbsp;&nbsp;↓<br>
+        ViewData / ViewBag / ModelState<br><br>
+        Short-lived cross-request state<br>
+        &nbsp;&nbsp;↓<br>
+        TempData / Session<br><br>
+        Cache<br>
+        &nbsp;&nbsp;↓<br>
+        IMemoryCache / Redis<br><br>
+        Persistent business data<br>
+        &nbsp;&nbsp;↓<br>
+        Database
+      </div>
+    </section>
+
+    <!-- AUTH VS STATE -->
+    <section id="auth-vs-state">
+      <h2>🔐 Authentication vs State Management</h2>
+      <p class="text-muted mb-2">Authentication is related to state, but it is not simply another storage mechanism.</p>
+      <div class="flow-box">
+        User<br>
+        &nbsp;↓<br>
+        Login<br>
+        &nbsp;↓<br>
+        Authentication<br>
+        &nbsp;↓<br>
+        ClaimsPrincipal<br>
+        &nbsp;↓<br>
+        Authentication Cookie / Token<br>
+        &nbsp;↓<br>
+        User.Identity / User.Claims
+      </div>
+      <div style="font-size:.85rem;line-height:1.8;margin-top:.75rem;">
+        <div><strong>Authentication:</strong> Who is the user?</div>
+        <div><strong>Authorization:</strong> What is the user allowed to do?</div>
+        <div><strong>Session:</strong> What temporary user-specific data should the application remember?</div>
+      </div>
+    </section>
+
+    <!-- DECISION TREE -->
+    <section id="decision-tree">
+      <h2>🧭 Which One Should I Use?</h2>
+      <div class="sim-panel" style="max-width:600px;">
+        <label style="font-size:.82rem;">1. Does the data need to survive after the browser closes?</label>
+        <select id="decQ1">
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
+        <label style="font-size:.82rem;">2. Should the browser store the value?</label>
+        <select id="decQ2">
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
+        <label style="font-size:.82rem;">3. Is it permanent business data?</label>
+        <select id="decQ3">
+          <option value="no">No</option>
+          <option value="yes">Yes</option>
+        </select>
+        <label style="font-size:.82rem;">4. Is it temporary user-specific data?</label>
+        <select id="decQ4">
+          <option value="no">No</option>
+          <option value="yes">Yes</option>
+        </select>
+        <label style="font-size:.82rem;">5. Is it expensive data that can be regenerated?</label>
+        <select id="decQ5">
+          <option value="no">No</option>
+          <option value="yes">Yes</option>
+        </select>
+        <label style="font-size:.82rem;">6. Are there multiple application servers?</label>
+        <select id="decQ6">
+          <option value="no">No</option>
+          <option value="yes">Yes</option>
+        </select>
+        <button class="btn btn-primary" id="decideBtn" style="width:100%;margin-top:.5rem;">Recommend</button>
+        <div id="decisionResult" class="sim-status mt-2">Answer the questions and click Recommend.</div>
+      </div>
+    </section>
+
+    <!-- CHEAT SHEET -->
+    <section id="cheatsheet">
+      <h2>📋 Interview Cheat Sheet</h2>
+      <div class="cheat-item"><strong>ViewData</strong> Controller → View, current request only</div>
+      <div class="cheat-item"><strong>ViewBag</strong> Dynamic wrapper around ViewData</div>
+      <div class="cheat-item"><strong>TempData</strong> Short-lived, survives one redirect</div>
+      <div class="cheat-item"><strong>ModelState</strong> Request-specific validation state</div>
+      <div class="cheat-item"><strong>Hidden Field</strong> Client-side form value, not secure</div>
+      <div class="cheat-item"><strong>Query String</strong> URL data, visible and modifiable</div>
+      <div class="cheat-item"><strong>Cookie</strong> Client-side, sent with matching requests</div>
+      <div class="cheat-item"><strong>LocalStorage</strong> Persistent browser storage</div>
+      <div class="cheat-item"><strong>SessionStorage</strong> Tab-lifetime browser storage</div>
+      <div class="cheat-item"><strong>Session</strong> Server-side user-specific temporary state</div>
+      <div class="cheat-item"><strong>IMemoryCache</strong> Cache inside one application instance</div>
+      <div class="cheat-item"><strong>Distributed Cache</strong> Shared cache (Redis) across instances</div>
+      <div class="cheat-item"><strong>Database</strong> Persistent source of truth</div>
+      <div class="cheat-item"><strong>Claims</strong> User identity attributes</div>
+    </section>
+
+    <section style="margin-top:3rem;padding:2rem;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);text-align:center;">
+      <h2 style="margin-bottom:1rem;">Remember This</h2>
+      <p style="font-size:1rem;font-weight:500;">Ask 4 questions:</p>
+      <ol style="list-style-position:inside;color:var(--text-muted);margin:1rem 0;font-size:.9rem;">
+        <li>Where should the data live?</li>
+        <li>How long should it live?</li>
+        <li>Is it sensitive?</li>
+        <li>Does the application have multiple servers?</li>
+      </ol>
+      <p style="font-size:1.1rem;font-weight:700;background:linear-gradient(135deg,var(--primary),#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">
+        ASP.NET Core MVC State Management — Beginner → Intermediate → Advanced
+      </p>
+    </section>
+  </main>
+</div>
+
+<script>
+// ============ DATA ============
+const stateData = {
+  ViewData:{location:"Server / Request",code:'public IActionResult Index()\n{\n    ViewData["Message"] = "Hello MVC";\n    return View();\n}\n\n// Razor\n<h2>@ViewData["Message"]</h2>',beginner:"ViewData is like handing a note from the Controller to the View."},
+  ViewBag:{location:"Server / Request",code:'public IActionResult Index()\n{\n    ViewBag.Message = "Hello MVC";\n    return View();\n}\n\n// Razor\n<h2>@ViewBag.Message</h2>',beginner:"ViewBag is like a magical bag carrying a note from Controller to View."},
+  TempData:{location:"Depends on provider",code:'TempData["Message"] = "Saved successfully";\nreturn RedirectToAction("Index");',beginner:"TempData is like a sticky note that survives one redirect."},
+  ModelState:{location:"Server / Request",code:'[HttpPost]\npublic IActionResult Create(ProductViewModel model)\n{\n    if (!ModelState.IsValid)\n    {\n        return View(model);\n    }\n    return RedirectToAction("Index");\n}',beginner:"ModelState is a checklist that says if the form data is valid."},
+  "Hidden Field":{location:"Browser (form)",code:'<input type="hidden" name="UserId" value="@Model.UserId" />',beginner:"Hidden field is a secret note in a form that users can edit."},
+  "Query String":{location:"Browser / URL",code:'// URL: /products?id=10\n\npublic IActionResult Products(int id)\n{\n    return View(id);\n}',beginner:"Query string is like writing a note on the outside of an envelope."},
+  Cookie:{location:"Browser",code:'Response.Cookies.Append("username", "Sonilal");\nvar username = Request.Cookies["username"];',beginner:"Cookie is a small note kept in the user's browser."},
+  LocalStorage:{location:"Browser",code:'localStorage.setItem("theme", "dark");\nconst theme = localStorage.getItem("theme");',beginner:"LocalStorage is a notebook kept permanently in the browser."},
+  SessionStorage:{location:"Browser",code:'sessionStorage.setItem("step", "2");\nconst step = sessionStorage.getItem("step");',beginner:"SessionStorage is a whiteboard erased when you close the tab."},
+  Session:{location:"Server",code:'HttpContext.Session.SetString("username", "Sonilal");\nvar username = HttpContext.Session.GetString("username");',beginner:"Session is a locker on the server. The browser gets a key."},
+  IMemoryCache:{location:"Server memory",code:'_cache.Set("username", "Sonilal");\nvar username = _cache.Get<string>("username");',beginner:"IMemoryCache is a fast notepad on the server's desk."},
+  "Distributed Cache":{location:"Shared cache (Redis, SQL)",code:'await _cache.SetStringAsync("key", "value");\nvar value = await _cache.GetStringAsync("key");',beginner:"Distributed cache is a shared whiteboard all servers can access."},
+  Database:{location:"Database server",code:'var user = await _context.Users.FindAsync(id);\n_context.Users.Add(newUser);\nawait _context.SaveChangesAsync();',beginner:"Database is a filing cabinet that keeps records forever."},
+  Claims:{location:"Authentication context",code:'var identity = (ClaimsIdentity)User.Identity;\nvar email = identity.FindFirst(ClaimTypes.Email)?.Value;',beginner:"Claims are ID badges that tell the server who you are."}
+};
+
+const comparisonData=[
+  {name:"ViewData",cat:"A. Request/MVC",loc:"Server/request",life:"Current request",browse:"No",use:"Controller → View"},
+  {name:"ViewBag",cat:"A. Request/MVC",loc:"Server/request",life:"Current request",browse:"No",use:"Controller → View"},
+  {name:"TempData",cat:"A. Request/MVC",loc:"Depends on provider",life:"Short-lived",browse:"Usually no direct value",use:"Redirect messages"},
+  {name:"ModelState",cat:"A. Request/MVC",loc:"Server/request",life:"Current request",browse:"No",use:"Validation"},
+  {name:"Hidden Field",cat:"B. Client-Side",loc:"Browser",life:"Until submitted",browse:"Yes",use:"Form values"},
+  {name:"Query String",cat:"B. Client-Side",loc:"Browser/URL",life:"Until URL changes",browse:"Yes",use:"Filtering/navigation"},
+  {name:"Cookie",cat:"B. Client-Side",loc:"Browser",life:"Configurable",browse:"Yes",use:"Preferences/small identifiers"},
+  {name:"LocalStorage",cat:"B. Client-Side",loc:"Browser",life:"Persistent",browse:"Yes",use:"Client preferences"},
+  {name:"SessionStorage",cat:"B. Client-Side",loc:"Browser",life:"Tab lifetime",browse:"Yes",use:"Temporary UI state"},
+  {name:"Session",cat:"C. Server-Side",loc:"Server",life:"Session",browse:"Usually no",use:"User session data"},
+  {name:"IMemoryCache",cat:"C. Server-Side",loc:"Server memory",life:"Configurable",browse:"No",use:"Fast temporary cache"},
+  {name:"Distributed Cache",cat:"C. Server-Side",loc:"Shared server/cache",life:"Configurable",browse:"No",use:"Scaled applications"},
+  {name:"Database",cat:"C. Server-Side",loc:"Database server",life:"Persistent",browse:"No",use:"Permanent business data"},
+  {name:"Claims",cat:"C. Server-Side",loc:"Authentication context",life:"Authentication lifetime",browse:"Depends on mechanism",use:"User identity"}
+];
+
+const lifecycleStages=[
+  {name:"Browser",detail:"The client initiates an HTTP request."},
+  {name:"HTTP Request",detail:"A stateless request is sent from the browser to the server."},
+  {name:"Routing",detail:"ASP.NET Core examines the URL and selects the matching controller and action."},
+  {name:"Model Binding",detail:"ASP.NET Core takes values from the request and maps them to action parameters or model properties."},
+  {name:"Controller",detail:"The controller instance is created and dependencies are injected."},
+  {name:"Action Method",detail:"The action method executes the logic for the request."},
+  {name:"State Management",detail:"The action may read or write state using Session, Cache, TempData, etc."},
+  {name:"View",detail:"If the result is a view, Razor renders HTML using the provided model and ViewData."},
+  {name:"HTTP Response",detail:"The server sends the response back to the browser."},
+  {name:"Browser",detail:"The browser receives and processes the response."}
+];
+
+const beginnerQs=[
+  "What is state management?|Managing data across requests in a stateless protocol.",
+  "Why do we need state management?|HTTP is stateless, so we need to remember data between requests.",
+  "What is ViewData?|A dictionary for passing data from Controller to View in the same request.",
+  "What is ViewBag?|A dynamic wrapper around ViewData.",
+  "What is TempData?|Short-lived data that survives a redirect.",
+  "What is Session?|Server-side storage for user-specific data.",
+  "What is a Cookie?|A small piece of data stored in the browser and sent with requests.",
+  "What is LocalStorage?|Persistent browser storage, not sent with requests.",
+  "What is SessionStorage?|Browser storage that lasts for the tab session.",
+  "What is Query String?|Data appended to the URL.",
+  "What is a Hidden Field?|An invisible form field sent on submit.",
+  "Difference between ViewData and ViewBag?|ViewData is dictionary-based, ViewBag is dynamic.",
+  "Difference between Cookie and Session?|Cookie is client-side, Session is server-side.",
+  "Is HTTP stateful or stateless?|Stateless.",
+  "Where is Session data stored?|On the server."
+];
+
+const intermediateQs=[
+  "Why is HTTP stateless?|Each request is independent; server doesn't remember previous requests.",
+  "How does ASP.NET Core Session work?|Server stores data; client gets a session ID cookie.",
+  "How does TempData work?|Stores data temporarily, usually in cookie or session, until read.",
+  "What happens to TempData after it is read?|It is marked for deletion and removed at end of request.",
+  "Cookie vs Session?|Cookie: client-side, size-limited. Session: server-side, more secure.",
+  "LocalStorage vs Cookie?|LocalStorage: larger, not sent with requests. Cookie: smaller, sent automatically.",
+  "SessionStorage vs LocalStorage?|SessionStorage: tab lifetime. LocalStorage: persistent.",
+  "When should you use TempData?|For messages across redirects.",
+  "Why shouldn't sensitive data be stored directly in LocalStorage?|It's accessible via JavaScript (XSS).",
+  "What is distributed session?|Session data stored in a shared cache like Redis.",
+  "What is IMemoryCache?|In-memory cache local to one server instance.",
+  "Cache vs Session?|Cache: shared, not user-specific. Session: user-specific.",
+  "What happens when an application runs on multiple servers?|Session state must be shared or sticky.",
+  "What is sticky session?|Load balancer routes same user to same server.",
+  "How can Redis help ASP.NET Core applications?|Provides distributed cache and session storage."
+];
+
+const advancedQs=[
+  "How would you design session management for a horizontally scaled ASP.NET Core application?|Use distributed cache (Redis) for session storage.",
+  "Why can IMemoryCache be problematic in a multi-server environment?|Each server has its own cache; data is not shared.",
+  "How does distributed caching solve scalability problems?|All servers read/write to a shared cache.",
+  "What happens if a server containing session data crashes?|Session data is lost if not distributed.",
+  "How would you choose between Session, Redis and Database?|Session for temporary, Redis for shared cache, Database for permanent.",
+  "What are the security risks of client-side state?|Tampering, XSS, data exposure.",
+  "Why shouldn't authentication-sensitive data be blindly stored in LocalStorage?|XSS can steal it.",
+  "How do authentication cookies work?|Encrypted ticket stored in cookie, validated by server.",
+  "What are claims?|Key-value pairs representing user identity.",
+  "What is cache invalidation?|Removing or updating stale cache entries.",
+  "What is cache stampede?|Many requests simultaneously trying to regenerate cache.",
+  "How does a load balancer affect session state?|Requires sticky sessions or distributed state.",
+  "How can an application remain stateless?|Store all state in database or distributed cache.",
+  "What are the advantages of stateless architecture?|Easy scaling, resilience.",
+  "How would you design state management for a high-traffic e-commerce application?|Use Redis for session/cache, database for orders."
+];
+
+const rapidFireData=[
+  {q:"Where is IMemoryCache stored?",a:"In the memory of the current application instance."},
+  {q:"What happens if the request goes to another server?",a:"The other server has its own memory cache unless a shared/distributed cache is used."},
+  {q:"Where is Session data stored?",a:"On the server."},
+  {q:"What does the browser store for Session?",a:"A session identifier cookie."},
+  {q:"What is TempData used for?",a:"Short-lived data across redirects."},
+  {q:"Can users modify query strings?",a:"Yes, query strings are client-controlled."},
+  {q:"Safest place for sensitive data?",a:"Server-side (Session, Database, Cache)."},
+  {q:"What is a distributed cache?",a:"Cache shared across multiple application instances."},
+  {q:"What is sticky session?",a:"Load balancer routes same user to same server."},
+  {q:"LocalStorage vs SessionStorage?",a:"LocalStorage persists; SessionStorage lasts for the tab."}
+];
+
+const quizData=[
+  {q:"Where is LocalStorage data stored?",opts:["SQL Server","Browser","Server memory","Redis"],correct:1,exp:"LocalStorage is a browser API."},
+  {q:"Where is Session data stored?",opts:["Browser","Server","Database","Cookie"],correct:1,exp:"Session data is server-side."},
+  {q:"Which is NOT sent with HTTP requests?",opts:["Cookie","Query String","LocalStorage","Hidden Field"],correct:2,exp:"LocalStorage is not sent with requests."},
+  {q:"What is TempData used for?",opts:["Permanent storage","Data across redirects","Passwords","Caching"],correct:1,exp:"TempData survives redirects."},
+  {q:"ViewBag is a wrapper around?",opts:["ViewData","TempData","Session","Cookie"],correct:0,exp:"ViewBag wraps ViewData."},
+  {q:"Which is client-side?",opts:["Session","IMemoryCache","Cookie","Database"],correct:2,exp:"Cookie is browser-side."},
+  {q:"Which is server-side?",opts:["LocalStorage","SessionStorage","Session","Query String"],correct:2,exp:"Session is server-side."},
+  {q:"HTTP stateless means?",opts:["Server remembers all","Each request independent","State shared","Cookies required"],correct:1,exp:"HTTP doesn't remember requests."},
+  {q:"Best for permanent data?",opts:["Session","Cookie","Database","TempData"],correct:2,exp:"Database is persistent."},
+  {q:"Best for caching expensive data?",opts:["IMemoryCache","Session","Cookie","ViewData"],correct:0,exp:"IMemoryCache is fast server-side cache."},
+  {q:"Visible in URL?",opts:["Session","Cookie","Query String","TempData"],correct:2,exp:"Query strings are in the URL."},
+  {q:"Used for user identity?",opts:["Claims","ViewData","SessionStorage","TempData"],correct:0,exp:"Claims represent identity."},
+  {q:"What is IMemoryCache?",opts:["Distributed cache","Per-server memory cache","Database","Browser storage"],correct:1,exp:"IMemoryCache is local to one server."},
+  {q:"Shared across servers?",opts:["IMemoryCache","Distributed Cache","SessionStorage","ViewBag"],correct:1,exp:"Distributed cache is shared."},
+  {q:"Which is NOT trusted?",opts:["Server session","Cookie","Database","IMemoryCache"],correct:1,exp:"Cookies can be modified."},
+  {q:"What is a hidden field?",opts:["Visible input","Invisible form field","Server variable","Cache key"],correct:1,exp:"Hidden fields are invisible but sent on submit."},
+  {q:"ViewData lifetime?",opts:["Permanent","Current request","Browser session","Tab lifetime"],correct:1,exp:"ViewData lasts only for the current request."},
+  {q:"Which is NOT a state technique?",opts:["Cookie","Session","HTML","Query String"],correct:2,exp:"HTML is markup, not state."},
+  {q:"Why use distributed cache?",opts:["Single server","Multiple servers","Browser storage","Forms"],correct:1,exp:"For scaled apps."},
+  {q:"Which is a security risk?",opts:["Server session","LocalStorage for secrets","IMemoryCache","Database"],correct:1,exp:"LocalStorage is accessible via JS."}
+];
+
+const flashcards=[
+  {f:"What is Session?",b:"Server-side storage for user-specific temporary data. The client holds a session identifier."},
+  {f:"What is a Cookie?",b:"Small data stored in the browser and sent with matching HTTP requests."},
+  {f:"What is LocalStorage?",b:"Persistent browser storage, not sent with HTTP requests."},
+  {f:"What is SessionStorage?",b:"Browser storage lasting only for the tab/session lifetime."},
+  {f:"What is ViewData?",b:"Dictionary for passing data from Controller to View in the same request."},
+  {f:"What is ViewBag?",b:"Dynamic wrapper around ViewData."},
+  {f:"What is TempData?",b:"Short-lived data surviving a redirect, often for messages."},
+  {f:"What is Query String?",b:"Data appended to the URL after a '?'."},
+  {f:"What is a Hidden Field?",b:"Invisible form field whose value is sent on submit."},
+  {f:"What is IMemoryCache?",b:"In-memory cache local to a single application instance."},
+  {f:"What is Distributed Cache?",b:"Cache shared across multiple application instances (e.g., Redis)."},
+  {f:"What is a Database?",b:"Persistent storage for long-term data."},
+  {f:"What are Claims?",b:"Key-value pairs representing user identity and attributes."},
+  {f:"What is stateless HTTP?",b:"Each HTTP request is independent; the server does not remember previous requests."},
+  {f:"What is a Request?",b:"Message from client to server asking for a resource."},
+  {f:"What is a Response?",b:"Message from server back to client."},
+  {f:"What is a Redirect?",b:"Response telling the browser to make a new request to a different URL."},
+  {f:"Why is security important with client-side state?",b:"Client-side data can be tampered with; never trust it."},
+  {f:"What is scalability in state management?",b:"Handling growth by sharing or distributing state."},
+  {f:"What is caching?",b:"Storing frequently used data in fast storage to reduce latency."},
+  {f:"Cookie vs Session?",b:"Cookie: client-side, small. Session: server-side, more secure."},
+  {f:"LocalStorage vs SessionStorage?",b:"LocalStorage persists; SessionStorage lasts for the tab."},
+  {f:"ViewData vs ViewBag?",b:"ViewData is dictionary-based; ViewBag is dynamic."},
+  {f:"Cache vs Database?",b:"Cache is fast, temporary; Database is persistent."},
+  {f:"When to use TempData?",b:"For messages that need to survive a redirect."},
+  {f:"When to use Query String?",b:"For filtering, sorting, or passing non-sensitive IDs."},
+  {f:"When to use Session?",b:"For user-specific temporary data like login state."},
+  {f:"When to use IMemoryCache?",b:"For caching expensive data in a single-server app."},
+  {f:"When to use Distributed Cache?",b:"For caching in multi-server or scaled applications."},
+  {f:"When to use Database?",b:"For permanent, critical business data."},
+  {f:"What is a session ID?",b:"Unique identifier in a cookie linking client to server-side session."},
+  {f:"What is cache invalidation?",b:"Removing or updating stale cache entries."},
+  {f:"What is a load balancer?",b:"Distributes incoming requests across multiple servers."},
+  {f:"What is sticky session?",b:"Load balancer routes the same user to the same server."},
+  {f:"What is Redis?",b:"In-memory data store often used as a distributed cache."},
+  {f:"What is a claim?",b:"Piece of information about a user, like email or role."},
+  {f:"Why avoid sensitive data in LocalStorage?",b:"It is accessible via JavaScript (XSS risk)."},
+  {f:"What is horizontal scaling?",b:"Adding more servers to handle increased load."},
+  {f:"What is a stateless architecture?",b:"App servers do not store client state between requests."},
+  {f:"Best state for shopping cart?",b:"Session for temporary; Database for persistent."},
+  {f:"Best state for theme preference?",b:"Cookie or LocalStorage depending on requirements."}
+];
+
+const completeExamples=[
+  {id:"viewdata",title:"ViewData",badge:"Beginner",badgeClass:"badge-beginner",
+   programCs:'var builder = WebApplication.CreateBuilder(args);\nbuilder.Services.AddControllersWithViews();\nvar app = builder.Build();\napp.UseRouting();\napp.MapControllerRoute(\n    name: "default",\n    pattern: "{controller=Home}/{action=Index}/{id?}");\napp.Run();',
+   controller:'using Microsoft.AspNetCore.Mvc;\n\npublic class HomeController : Controller\n{\n    public IActionResult Index()\n    {\n        ViewData["Message"] = "Hello from ViewData";\n        ViewData["UserName"] = "Sonilal";\n        return View();\n    }\n}',
+   view:'@{ ViewData["Title"] = "ViewData Example"; }\n<h2>@ViewData["Message"]</h2>\n<p>User: @ViewData["UserName"]</p>',
+   flow:'Controller → ViewData → Razor View',
+   explanation:"ViewData is a dictionary available for the current request. Used to pass data from Controller to View.",
+   useCase:"Passing page title or messages to the view.",
+   notUseCase:"Not for data that must survive a redirect.",
+   security:"Not visible to browser directly; rendered into HTML.",
+   interview:"ViewData is dictionary-based and requires casting.",
+   simulation:["Browser sends request","Controller sets ViewData","View renders using ViewData","Response sent to browser"]},
+  {id:"viewbag",title:"ViewBag",badge:"Beginner",badgeClass:"badge-beginner",
+   controller:'using Microsoft.AspNetCore.Mvc;\n\npublic class HomeController : Controller\n{\n    public IActionResult Index()\n    {\n        ViewBag.Message = "Hello from ViewBag";\n        ViewBag.UserName = "Sonilal";\n        return View();\n    }\n}',
+   view:'<h2>@ViewBag.Message</h2>\n<p>User: @ViewBag.UserName</p>',
+   flow:'ViewBag → ViewData → Razor View',
+   explanation:"ViewBag is a dynamic wrapper around ViewData.",
+   useCase:"Same as ViewData but with dynamic syntax.",
+   notUseCase:"Avoid in strongly-typed views.",
+   security:"Same as ViewData.",
+   interview:"ViewBag and ViewData share the same underlying storage.",
+   simulation:["Browser sends request","Controller sets ViewBag","View renders using ViewBag","Response sent"]},
+  {id:"tempdata",title:"TempData",badge:"Beginner",badgeClass:"badge-beginner",
+   controller:'public class ProductController : Controller\n{\n    public IActionResult Save()\n    {\n        TempData["SuccessMessage"] = "Product saved!";\n        return RedirectToAction("Index");\n    }\n    public IActionResult Index() => View();\n}',
+   view:'@if (TempData["SuccessMessage"] != null)\n{\n    <div class="alert alert-success">@TempData["SuccessMessage"]</div>\n}',
+   flow:'Save() → TempData → Redirect → Index() → View',
+   explanation:"TempData survives a redirect. Short-lived; removed after being read.",
+   useCase:"Success or error messages after redirect.",
+   notUseCase:"Not for large or permanent data.",
+   security:"Usually not directly visible to the browser.",
+   interview:"TempData.Keep() and TempData.Peek() can retain data longer.",
+   simulation:["Set TempData","Redirect response","New request to Index","Read TempData","Marked for deletion"]},
+  {id:"hiddenfield",title:"Hidden Field",badge:"Beginner",badgeClass:"badge-beginner",
+   controller:'[HttpGet]\npublic IActionResult Edit()\n{\n    return View(new ProductViewModel { ProductId = 101, ProductName = "Laptop" });\n}\n\n[HttpPost]\npublic IActionResult Edit(ProductViewModel model)\n{\n    return Content($"ID: {model.ProductId}, Name: {model.ProductName}");\n}',
+   view:'@model ProductViewModel\n<form asp-action="Edit" method="post">\n    <input type="hidden" asp-for="ProductId" />\n    <label>Product Name</label>\n    <input asp-for="ProductName" />\n    <button type="submit">Save</button>\n</form>',
+   flow:'Controller → View (hidden field) → Form POST → Controller',
+   explanation:"Hidden fields store data in the form; sent on submit.",
+   useCase:"Preserving an ID across form submissions.",
+   notUseCase:"Not secure for sensitive data.",
+   security:"Users can modify hidden fields via developer tools.",
+   interview:"Hidden does NOT mean secure.",
+   simulation:["Render view with hidden field","User submits form","Hidden value sent","Controller reads value"]},
+  {id:"querystring",title:"Query String",badge:"Beginner",badgeClass:"badge-beginner",
+   controller:'public class ProductsController : Controller\n{\n    public IActionResult Details(int id)\n    {\n        return Content($"Product ID: {id}");\n    }\n}',
+   view:'<a asp-controller="Products" asp-action="Details" asp-route-id="101">View Product</a>',
+   flow:'Browser URL → Query String → Controller',
+   explanation:"Query strings are appended to the URL and visible to everyone.",
+   useCase:"Filtering, sorting, pagination.",
+   notUseCase:"Not for sensitive or large data.",
+   security:"Client-controlled; must be validated.",
+   interview:"Query strings are visible in browser history.",
+   simulation:["Click link with query string","Request sent","Controller reads parameter","Response returned"]},
+  {id:"cookie",title:"Cookie",badge:"Beginner",badgeClass:"badge-beginner",
+   controller:'public IActionResult SetCookie()\n{\n    Response.Cookies.Append("username", "Sonilal",\n        new CookieOptions\n        {\n            HttpOnly = true,\n            Secure = true,\n            SameSite = SameSiteMode.Lax,\n            Expires = DateTimeOffset.UtcNow.AddDays(7)\n        });\n    return Content("Cookie created");\n}\n\npublic IActionResult GetCookie()\n{\n    var username = Request.Cookies["username"];\n    return Content($"Username: {username}");\n}',
+   flow:'Browser → Cookie → HTTP Request → ASP.NET Core',
+   explanation:"Cookies are stored in browser and sent with matching requests.",
+   useCase:"Preferences, session identifiers.",
+   notUseCase:"Not for large or unencrypted sensitive data.",
+   security:"HttpOnly prevents JS access. Secure sends only over HTTPS. SameSite controls cross-site.",
+   interview:"Cookies are client-side but sent automatically with requests.",
+   simulation:["Server sets cookie","Browser stores cookie","Browser sends cookie","Server reads cookie"]},
+  {id:"localstorage",title:"LocalStorage",badge:"Intermediate",badgeClass:"badge-intermediate",
+   view:'<h2>LocalStorage Example</h2>\n<input id="username" placeholder="Enter username" />\n<button onclick="saveUser()">Save</button>\n<button onclick="loadUser()">Load</button>\n<p id="result"></p>\n\n<script>\nfunction saveUser() {\n    const u = document.getElementById("username").value;\n    localStorage.setItem("username", u);\n    document.getElementById("result").innerText = "Saved!";\n}\nfunction loadUser() {\n    const u = localStorage.getItem("username");\n    document.getElementById("result").innerText = u ?? "No value";\n}\n<\/script>',
+   flow:'Browser → localStorage',
+   explanation:"LocalStorage is persistent browser storage, not sent with requests.",
+   useCase:"Client-side preferences, offline data.",
+   notUseCase:"Not for sensitive authentication secrets.",
+   security:"Accessible via JavaScript; XSS risk.",
+   interview:"LocalStorage persists until explicitly cleared.",
+   simulation:["JS saves data","Data stored in browser","JS reads data later","Available across sessions"]},
+  {id:"sessionstorage",title:"SessionStorage",badge:"Intermediate",badgeClass:"badge-intermediate",
+   view:'<h2>SessionStorage Example</h2>\n<input id="searchText" placeholder="Search..." />\n<button onclick="saveSearch()">Save</button>\n<button onclick="loadSearch()">Load</button>\n\n<script>\nfunction saveSearch() {\n    sessionStorage.setItem("search", document.getElementById("searchText").value);\n}\nfunction loadSearch() {\n    document.getElementById("searchText").value = sessionStorage.getItem("search") ?? "";\n}\n<\/script>',
+   flow:'Browser → sessionStorage',
+   explanation:"SessionStorage lasts for the tab/session, not sent with requests.",
+   useCase:"Temporary UI state, multi-step forms.",
+   notUseCase:"Not for data that persists across tabs.",
+   security:"Accessible via JavaScript; same XSS risks.",
+   interview:"SessionStorage is cleared when the tab closes.",
+   simulation:["JS saves data","Stored for current tab","JS reads data","Cleared on tab close"]},
+  {id:"session",title:"ASP.NET Core Session",badge:"Intermediate",badgeClass:"badge-intermediate",
+   programCs:'var builder = WebApplication.CreateBuilder(args);\nbuilder.Services.AddControllersWithViews();\nbuilder.Services.AddDistributedMemoryCache();\nbuilder.Services.AddSession(options =>\n{\n    options.IdleTimeout = TimeSpan.FromMinutes(30);\n    options.Cookie.HttpOnly = true;\n    options.Cookie.IsEssential = true;\n});\nvar app = builder.Build();\napp.UseRouting();\napp.UseSession();\napp.MapControllerRoute(\n    name: "default",\n    pattern: "{controller=Home}/{action=Index}/{id?}");\napp.Run();',
+   controller:'using Microsoft.AspNetCore.Mvc;\n\npublic class HomeController : Controller\n{\n    public IActionResult SetSession()\n    {\n        HttpContext.Session.SetString("Username", "Sonilal");\n        HttpContext.Session.SetInt32("UserId", 101);\n        return Content("Session saved");\n    }\n    public IActionResult GetSession()\n    {\n        var username = HttpContext.Session.GetString("Username");\n        var userId = HttpContext.Session.GetInt32("UserId");\n        return Content($"Username: {username}, UserId: {userId}");\n    }\n}',
+   flow:'Browser (Session ID) → ASP.NET Core → Session Store',
+   explanation:"Session data is stored server-side. Browser only holds a session ID cookie.",
+   useCase:"User login state, cart.",
+   notUseCase:"Not for permanent data.",
+   security:"Data stays on server. Session ID cookie should be HttpOnly, Secure.",
+   interview:"Session data is server-side; client holds only an identifier.",
+   simulation:["Server creates session","Sets session cookie","Browser sends cookie","Server retrieves session data"]},
+  {id:"imemorycache",title:"IMemoryCache",badge:"Intermediate",badgeClass:"badge-intermediate",
+   programCs:'var builder = WebApplication.CreateBuilder(args);\nbuilder.Services.AddControllersWithViews();\nbuilder.Services.AddMemoryCache();\nvar app = builder.Build();\napp.UseRouting();\napp.MapControllerRoute(\n    name: "default",\n    pattern: "{controller=Home}/{action=Index}/{id?}");\napp.Run();',
+   controller:'using Microsoft.AspNetCore.Mvc;\nusing Microsoft.Extensions.Caching.Memory;\n\npublic class ProductController : Controller\n{\n    private readonly IMemoryCache _cache;\n    public ProductController(IMemoryCache cache) { _cache = cache; }\n    public IActionResult SetCache()\n    {\n        _cache.Set("ProductName", "Laptop", TimeSpan.FromMinutes(10));\n        return Content("Cached");\n    }\n    public IActionResult GetCache()\n    {\n        var product = _cache.Get<string>("ProductName");\n        return Content(product ?? "Cache miss");\n    }\n}',
+   flow:'Application Instance → IMemoryCache',
+   explanation:"IMemoryCache is local to one application instance.",
+   useCase:"Caching expensive data that can be regenerated.",
+   notUseCase:"Not suitable for multi-server environments.",
+   security:"Data stays on server. Not visible to browser.",
+   interview:"Each server has its own IMemoryCache.",
+   simulation:["Controller sets cache","Stored in server memory","Read from cache","Returned in response"]},
+  {id:"distributedcache",title:"Distributed Cache",badge:"Advanced",badgeClass:"badge-advanced",
+   programCs:'builder.Services.AddStackExchangeRedisCache(options =>\n{\n    options.Configuration = "localhost:6379";\n    options.InstanceName = "MyApp:";\n});',
+   controller:'using Microsoft.AspNetCore.Mvc;\nusing Microsoft.Extensions.Caching.Distributed;\n\npublic class CacheController : Controller\n{\n    private readonly IDistributedCache _cache;\n    public CacheController(IDistributedCache cache) { _cache = cache; }\n    public async Task<IActionResult> Set()\n    {\n        await _cache.SetStringAsync("username", "Sonilal");\n        return Content("Saved");\n    }\n    public async Task<IActionResult> Get()\n    {\n        var username = await _cache.GetStringAsync("username");\n        return Content(username ?? "Cache miss");\n    }\n}',
+   flow:'App Server 1 ──┐\nApp Server 2 ──┼── Redis / Distributed Cache\nApp Server 3 ──┘',
+   explanation:"Distributed cache is shared across multiple app instances.",
+   useCase:"Scaled applications where multiple servers need shared cache.",
+   notUseCase:"Not needed for single-server apps.",
+   security:"Data stays in shared cache. Not visible to browser.",
+   interview:"Distributed cache solves multi-server scalability.",
+   simulation:["Server 1 writes to cache","Redis stores data","Server 2 reads from cache","Data shared across servers"]},
+  {id:"database",title:"Database (EF Core)",badge:"Advanced",badgeClass:"badge-advanced",
+   programCs:'builder.Services.AddDbContext<AppDbContext>(options =>\n    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));',
+   controller:'using Microsoft.AspNetCore.Mvc;\nusing Microsoft.EntityFrameworkCore;\n\npublic class ProductController : Controller\n{\n    private readonly AppDbContext _context;\n    public ProductController(AppDbContext context) { _context = context; }\n    public async Task<IActionResult> Index()\n    {\n        var products = await _context.Products.ToListAsync();\n        return View(products);\n    }\n}',
+   flow:'ASP.NET Core → EF Core → SQL Server → Persistent Data',
+   explanation:"Database is for persistent business state, not temporary request state.",
+   useCase:"Permanent business data.",
+   notUseCase:"Not for temporary request-scoped data.",
+   security:"Data stays in database. Use parameterized queries and access control.",
+   interview:"Database is the source of truth for persistent data.",
+   simulation:["Controller queries DB","EF Core generates SQL","Database returns data","Data displayed"]},
+  {id:"claims",title:"Claims / User Identity",badge:"Advanced",badgeClass:"badge-advanced",
+   programCs:'using Microsoft.AspNetCore.Authentication.Cookies;\n\nbuilder.Services\n    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)\n    .AddCookie();\n\n// Middleware\napp.UseAuthentication();\napp.UseAuthorization();',
+   controller:'using System.Security.Claims;\nusing Microsoft.AspNetCore.Authentication;\nusing Microsoft.AspNetCore.Authentication.Cookies;\nusing Microsoft.AspNetCore.Mvc;\n\npublic class AccountController : Controller\n{\n    public async Task<IActionResult> Login()\n    {\n        var claims = new List<Claim>\n        {\n            new Claim(ClaimTypes.Name, "Sonilal"),\n            new Claim(ClaimTypes.Email, "user@example.com"),\n            new Claim(ClaimTypes.Role, "Admin")\n        };\n        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);\n        await HttpContext.SignInAsync(\n            CookieAuthenticationDefaults.AuthenticationScheme,\n            new ClaimsPrincipal(identity));\n        return RedirectToAction("Profile");\n    }\n    public IActionResult Profile()\n    {\n        var username = User.Identity?.Name;\n        var isAdmin = User.IsInRole("Admin");\n        return Content($"User: {username}, Admin: {isAdmin}");\n    }\n}',
+   flow:'Login → Claims → Authentication Cookie → User.Identity',
+   explanation:"Claims represent info about the authenticated user. Persistence depends on the auth mechanism.",
+   useCase:"User identity, roles, authorization.",
+   notUseCase:"Not for storing large amounts of user data.",
+   security:"Claims stored in auth cookie/token. Use secure cookies and HTTPS.",
+   interview:"Claims are key-value pairs representing user identity.",
+   simulation:["User logs in","Server creates claims","Auth cookie set","Claims available in subsequent requests"]},
+  {id:"modelstate",title:"ModelState",badge:"Intermediate",badgeClass:"badge-intermediate",
+   controller:'[HttpPost]\npublic IActionResult Create(ProductViewModel model)\n{\n    if (!ModelState.IsValid)\n    {\n        return View(model);\n    }\n    return RedirectToAction("Index");\n}',
+   view:'@model ProductViewModel\n<form asp-action="Create" method="post">\n    <div asp-validation-summary="All"></div>\n    <input asp-for="ProductName" />\n    <span asp-validation-for="ProductName"></span>\n    <button type="submit">Save</button>\n</form>',
+   flow:'Form POST → Model Binding → ModelState → Validation',
+   explanation:"ModelState is request-specific MVC state for model binding and validation.",
+   useCase:"Validating form input and returning errors to the view.",
+   notUseCase:"Not a persistent storage mechanism.",
+   security:"ModelState errors displayed in view; ensure proper encoding.",
+   interview:"ModelState.IsValid checks if model binding and validation succeeded.",
+   simulation:["User submits form","Model binder populates model","Validation runs","ModelState checked","Controller acts accordingly"]}
+];
+
+// ============ STATE VARS ============
+let currentCardIndex = 0;
+let shuffledCards = flashcards.slice();
+let quizScore = 0;
+const quizAnswered = new Set();
+let beginnerMode = false;
+let rapidFireIndex = 0;
+let rapidFireKnown = 0;
+let rapidFireRevision = 0;
+
+// ============ HELPERS ============
+function escapeHtml(text){
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+function copyCode(button){
+  const header = button.closest('.code-header');
+  const pre = header.nextElementSibling;
+  const code = pre.querySelector('code').innerText;
+  const done = () => { const o = button.innerText; button.innerText = 'Copied!'; setTimeout(() => button.innerText = o, 1500); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(code).then(done).catch(() => fallbackCopy(code, done));
+  } else {
+    fallbackCopy(code, done);
+  }
+}
+function fallbackCopy(text, done){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); done(); }
+  catch(e){ alert('Copy failed. Please select and copy manually.'); }
+  document.body.removeChild(ta);
+}
+
+// ============ RENDER FUNCTIONS ============
+function renderComparisonTable(filter){
+  const tbody = document.querySelector('#comparisonTable tbody');
+  const f = (filter || '').toLowerCase();
+  const filtered = comparisonData.filter(r =>
+    r.name.toLowerCase().includes(f) ||
+    r.loc.toLowerCase().includes(f) ||
+    r.use.toLowerCase().includes(f) ||
+    r.cat.toLowerCase().includes(f)
+  );
+  tbody.innerHTML = filtered.map(r =>
+    '<tr><td><strong>' + r.name + '</strong></td>' +
+    '<td>' + r.cat + '</td>' +
+    '<td>' + r.loc + '</td>' +
+    '<td>' + r.life + '</td>' +
+    '<td>' + r.browse + '</td>' +
+    '<td>' + r.use + '</td></tr>'
+  ).join('');
+}
+
+function renderScenarios(){
+  const scenarios = [
+    {t:"Show a success message after saving and redirecting",a:"TempData",w:"Survives redirects and auto-clears after being read."},
+    {t:"Remember user's theme preference",a:"Cookie or LocalStorage",w:"Cookie is sent with requests; LocalStorage is not."},
+    {t:"Store shopping cart for a logged-in user",a:"Session (temporary) / Database (persistent)",w:"Session for active cart; Database for saved cart."},
+    {t:"Store expensive data that can be regenerated",a:"Cache (IMemoryCache or Distributed)",w:"Reduces latency and DB load."},
+    {t:"Store permanent customer information",a:"Database",w:"Source of truth for critical data."},
+    {t:"Pass an ID through a URL",a:"Route parameter or Query String",w:"Query strings are visible and suitable for non-sensitive IDs."}
+  ];
+  document.getElementById('scenarioCards').innerHTML = scenarios.map(s =>
+    '<div class="card" style="margin-bottom:.75rem;">' +
+    '<h4>📌 ' + s.t + '</h4>' +
+    '<p style="color:var(--primary);font-weight:600;margin:.25rem 0;">Best: ' + s.a + '</p>' +
+    '<p class="text-muted">' + s.w + '</p></div>'
+  ).join('');
+}
+
+function renderInterview(containerId, questions){
+  document.getElementById(containerId).innerHTML = questions.map((q, i) => {
+    const parts = q.split('|');
+    const question = parts[0];
+    const answer = parts[1] || '';
+    const id = containerId + '-acc-' + i;
+    return '<div class="accordion-item">' +
+      '<div class="accordion-header" data-target="' + id + '">' +
+        '<span>' + (i+1) + '. ' + question + '</span><span class="arrow">▾</span>' +
+      '</div>' +
+      '<div class="accordion-body" id="' + id + '"><p>' + answer + '</p></div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderQuiz(){
+  document.getElementById('quizContainer').innerHTML = quizData.map((q, i) =>
+    '<div class="quiz-question">' +
+      '<p style="font-weight:600;">' + (i+1) + '. ' + q.q + '</p>' +
+      q.opts.map((opt, j) =>
+        '<div class="quiz-option" data-q="' + i + '" data-opt="' + j + '">' +
+        String.fromCharCode(65 + j) + '. ' + opt + '</div>'
+      ).join('') +
+      '<div class="quiz-feedback hidden" id="feedback-' + i + '"></div>' +
+    '</div>'
+  ).join('');
+}
+
+function renderFlashcard(){
+  const card = shuffledCards[currentCardIndex];
+  if(!card) return;
+  document.getElementById('cardFront').textContent = card.f;
+  document.getElementById('cardBack').textContent = card.b;
+  document.getElementById('cardBack').classList.add('hidden');
+  document.getElementById('cardCounter').textContent = (currentCardIndex + 1) + ' / ' + shuffledCards.length;
+}
+
+function renderCompleteExamples(){
+  document.getElementById('completeExamplesContainer').innerHTML = completeExamples.map(ex =>
+    '<div class="accordion-item" style="margin-bottom:1rem;">' +
+      '<div class="accordion-header" data-target="ex-' + ex.id + '">' +
+        '<span>' + ex.title + ' <span class="example-badge ' + ex.badgeClass + '">' + ex.badge + '</span></span>' +
+        '<span class="arrow">▾</span>' +
+      '</div>' +
+      '<div class="accordion-body" id="ex-' + ex.id + '" style="padding:1.1rem;">' +
+        (ex.programCs ? '<div class="code-header"><span>Program.cs</span><button class="copy-btn" data-copy>Copy</button></div><pre><code>' + escapeHtml(ex.programCs) + '</code></pre>' : '') +
+        (ex.controller ? '<div class="code-header"><span>Controller</span><button class="copy-btn" data-copy>Copy</button></div><pre><code>' + escapeHtml(ex.controller) + '</code></pre>' : '') +
+        (ex.view ? '<div class="code-header"><span>Razor View</span><button class="copy-btn" data-copy>Copy</button></div><pre><code>' + escapeHtml(ex.view) + '</code></pre>' : '') +
+        '<div class="example-flow">' + escapeHtml(ex.flow) + '</div>' +
+        '<div class="example-meta">' +
+          '<div><strong>Explanation:</strong> ' + ex.explanation + '</div>' +
+          '<div><strong>When to use:</strong> ' + ex.useCase + '</div>' +
+          '<div><strong>When NOT to use:</strong> ' + ex.notUseCase + '</div>' +
+          '<div><strong>Security:</strong> ' + ex.security + '</div>' +
+          '<div><strong>Interview:</strong> ' + ex.interview + '</div>' +
+        '</div>' +
+        '<button class="simulate-btn" data-sim="' + ex.id + '">⚡ Simulate Flow</button>' +
+        '<div class="simulation-log" id="sim-log-' + ex.id + '">Click Simulate to see the data flow.</div>' +
+      '</div>' +
+    '</div>'
+  ).join('');
+}
+
+function renderLifecycle(){
+  document.getElementById('lifecycleStages').innerHTML = lifecycleStages.map((s, i) =>
+    '<div class="lifecycle-stage" data-index="' + i + '">' +
+      '<span class="lifecycle-num">' + (i+1) + '</span>' +
+      '<span>' + s.name + '</span>' +
+    '</div>'
+  ).join('');
+}
+
+function updateRapidFire(){
+  const d = rapidFireData[rapidFireIndex];
+  document.getElementById('rapidFireQuestion').textContent = d.q;
+  document.getElementById('rapidFireAnswer').textContent = d.a;
+  document.getElementById('rapidFireAnswer').classList.add('hidden');
+  document.getElementById('rapidFireScore').textContent = 'Score: ' + rapidFireKnown + ' known / ' + rapidFireRevision + ' revision';
+}
+
+function updateSimulator(){
+  const key = document.getElementById('stateSelect').value;
+  const d = stateData[key];
+  if(!d) return;
+  document.getElementById('storageLocation').textContent = d.location;
+  document.getElementById('codeExample').innerHTML =
+    '<div class="code-header"><span>' + key + '</span><button class="copy-btn" data-copy>Copy</button></div>' +
+    '<pre><code>' + escapeHtml(d.code) + '</code></pre>';
+  const bn = document.getElementById('beginnerAnalogy');
+  if(beginnerMode && d.beginner){
+    bn.textContent = '🧸 ' + d.beginner;
+    bn.classList.remove('hidden');
+  } else {
+    bn.classList.add('hidden');
+  }
+}
+
+function simulateExample(id){
+  const ex = completeExamples.find(e => e.id === id);
+  if(!ex) return;
+  const log = document.getElementById('sim-log-' + id);
+  if(!log) return;
+  log.innerHTML = '';
+  let i = 0;
+  (function step(){
+    if(i < ex.simulation.length){
+      log.innerHTML += '→ ' + ex.simulation[i] + '<br>';
+      i++;
+      setTimeout(step, 600);
+    } else {
+      log.innerHTML += '✅ Flow complete.';
+    }
+  })();
+}
+
+// ============ INIT ============
+function init(){
+  // Initial renders
+  renderComparisonTable();
+  renderScenarios();
+  renderInterview('beginnerInterview', beginnerQs);
+  renderInterview('intermediateInterview', intermediateQs);
+  renderInterview('advancedInterview', advancedQs);
+  renderQuiz();
+  renderFlashcard();
+  renderCompleteExamples();
+  renderLifecycle();
+  updateRapidFire();
+  updateSimulator();
+
+  // ----- GLOBAL CLICK HANDLER for accordions, copy, simulate -----
+  document.addEventListener('click', function(e){
+    // Accordion header toggle
+    const header = e.target.closest('.accordion-header');
+    if(header){
+      const targetId = header.dataset.target;
+      if(targetId){
+        const body = document.getElementById(targetId);
+        if(body){
+          body.classList.toggle('open');
+          const arrow = header.querySelector('.arrow');
+          if(arrow) arrow.textContent = body.classList.contains('open') ? '▴' : '▾';
+        }
+        return;
+      }
+    }
+    // Copy button
+    const copyBtn = e.target.closest('[data-copy]');
+    if(copyBtn){ copyCode(copyBtn); return; }
+    // Simulate button
+    const simBtn = e.target.closest('[data-sim]');
+    if(simBtn){ simulateExample(simBtn.dataset.sim); return; }
+    // Lifecycle stage
+    const stage = e.target.closest('.lifecycle-stage');
+    if(stage){
+      document.querySelectorAll('.lifecycle-stage').forEach(s => s.classList.remove('active'));
+      stage.classList.add('active');
+      const idx = parseInt(stage.dataset.index, 10);
+      document.getElementById('lifecycleDetail').textContent = lifecycleStages[idx].detail;
+      return;
+    }
+    // Quiz option
+    const qOpt = e.target.closest('.quiz-option');
+    if(qOpt){
+      const q = parseInt(qOpt.dataset.q, 10);
+      const o = parseInt(qOpt.dataset.opt, 10);
+      if(quizAnswered.has(q)) return;
+      quizAnswered.add(q);
+      const question = quizData[q];
+      const fb = document.getElementById('feedback-' + q);
+      const parent = qOpt.parentElement;
+      parent.querySelectorAll('.quiz-option').forEach((el, idx) => {
+        if(idx === question.correct) el.classList.add('correct');
+        else if(idx === o) el.classList.add('incorrect');
+      });
+      if(o === question.correct){
+        quizScore++;
+        fb.textContent = '✓ Correct! ' + question.exp;
+        fb.style.color = 'var(--success)';
+      } else {
+        fb.textContent = '✗ Incorrect. ' + question.exp;
+        fb.style.color = 'var(--danger)';
+      }
+      fb.classList.remove('hidden');
+      document.getElementById('quizScore').textContent = quizScore + ' / ' + quizData.length;
+      return;
+    }
+    // Tab clicks
+    const tab = e.target.closest('.tab');
+    if(tab && tab.parentElement.id === 'serverTabs'){
+      document.querySelectorAll('#serverTabs .tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      const content = document.getElementById('tab-' + tab.dataset.tab);
+      if(content) content.classList.add('active');
+      return;
+    }
+  });
+
+  // ----- THEME -----
+  document.getElementById('themeToggle').addEventListener('click', function(){
+    document.body.classList.toggle('dark');
+    this.textContent = document.body.classList.contains('dark') ? '☀️ Light Mode' : '🌙 Dark Mode';
+  });
+
+  // ----- REVISION MODE -----
+  document.getElementById('revisionToggle').addEventListener('click', function(){
+    document.body.classList.toggle('revision');
+    const isRev = document.body.classList.contains('revision');
+    this.textContent = isRev ? '📖 Exit Revision' : '📖 Revision Mode';
+  });
+
+  // ----- PRINT -----
+  document.getElementById('printBtn').addEventListener('click', function(){ window.print(); });
+
+  // ----- VERSION SELECT -----
+  document.getElementById('versionSelect').addEventListener('change', function(e){
+    document.getElementById('versionNote').textContent = 'Selected ' + e.target.value + '. Code is compatible across .NET 8, 9, and 10.';
+  });
+
+  // ----- SIMULATOR -----
+  document.getElementById('stateSelect').addEventListener('change', updateSimulator);
+
+  document.getElementById('beginnerToggle').addEventListener('click', function(){
+    beginnerMode = !beginnerMode;
+    this.textContent = '🧸 Beginner Mode: ' + (beginnerMode ? 'ON' : 'OFF');
+    updateSimulator();
+  });
+
+  function logSim(msg){ document.getElementById('simLog').textContent = msg; }
+
+  document.getElementById('setStateBtn').addEventListener('click', () => {
+    const k = document.getElementById('keyInput').value || 'key';
+    const v = document.getElementById('valueInput').value || 'value';
+    const key = document.getElementById('stateSelect').value;
+    logSim('[Set State] ' + k + ' = "' + v + '" stored at ' + stateData[key].location);
+  });
+  document.getElementById('sendRequestBtn').addEventListener('click', () => logSim('[Send Request] Browser → Server (stateless).'));
+  document.getElementById('processBtn').addEventListener('click', () => logSim('[Process] Controller executes; may access state store.'));
+  document.getElementById('sendResponseBtn').addEventListener('click', () => logSim('[Response] Server → Browser.'));
+  document.getElementById('readStateBtn').addEventListener('click', () => logSim('[Read State] "' + (document.getElementById('keyInput').value || 'key') + '"'));
+  document.getElementById('runFlowBtn').addEventListener('click', async () => {
+    const steps = [
+      '[1/6] Browser initiates request...',
+      '[2/6] HTTP Request sent (stateless)...',
+      '[3/6] Server processes request...',
+      '[4/6] Controller accesses state store...',
+      '[5/6] HTTP Response sent...',
+      '[6/6] Browser reads state. Flow complete!'
+    ];
+    for(const s of steps){ logSim(s); await new Promise(r => setTimeout(r, 600)); }
+  });
+
+  // ----- TABLE SEARCH -----
+  document.getElementById('tableSearch').addEventListener('input', function(e){
+    renderComparisonTable(e.target.value);
+  });
+
+  // ----- FLASHCARDS -----
+  document.getElementById('showAnswerBtn').addEventListener('click', () => document.getElementById('cardBack').classList.toggle('hidden'));
+  document.getElementById('nextCardBtn').addEventListener('click', () => { currentCardIndex = (currentCardIndex + 1) % shuffledCards.length; renderFlashcard(); });
+  document.getElementById('prevCardBtn').addEventListener('click', () => { currentCardIndex = (currentCardIndex - 1 + shuffledCards.length) % shuffledCards.length; renderFlashcard(); });
+  document.getElementById('shuffleCardsBtn').addEventListener('click', () => {
+    for(let i = shuffledCards.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = shuffledCards[i]; shuffledCards[i] = shuffledCards[j]; shuffledCards[j] = tmp;
+    }
+    currentCardIndex = 0;
+    renderFlashcard();
+  });
+  document.getElementById('resetCardsBtn').addEventListener('click', () => {
+    shuffledCards = flashcards.slice();
+    currentCardIndex = 0;
+    renderFlashcard();
+  });
+
+  // ----- ANKI EXPORT -----
+  document.getElementById('exportAnkiBtn').addEventListener('click', () => {
+    let csv = 'Front,Back,Tags\n';
+    shuffledCards.forEach(c => {
+      csv += '"' + c.f.replace(/"/g, '""') + '","' + c.b.replace(/"/g, '""') + '","aspnetcore state-management"\n';
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'anki_flashcards.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+
+  // ----- RAPID FIRE -----
+  document.getElementById('revealAnswerBtn').addEventListener('click', () => document.getElementById('rapidFireAnswer').classList.remove('hidden'));
+  document.getElementById('knowBtn').addEventListener('click', () => {
+    rapidFireKnown++;
+    rapidFireIndex = (rapidFireIndex + 1) % rapidFireData.length;
+    updateRapidFire();
+  });
+  document.getElementById('reviseBtn').addEventListener('click', () => {
+    rapidFireRevision++;
+    rapidFireIndex = (rapidFireIndex + 1) % rapidFireData.length;
+    updateRapidFire();
+  });
+  document.getElementById('nextRapidBtn').addEventListener('click', () => {
+    rapidFireIndex = (rapidFireIndex + 1) % rapidFireData.length;
+    updateRapidFire();
+  });
+
+  // ----- DECISION TREE -----
+  document.getElementById('decideBtn').addEventListener('click', () => {
+    const q1 = document.getElementById('decQ1').value;
+    const q2 = document.getElementById('decQ2').value;
+    const q3 = document.getElementById('decQ3').value;
+    const q4 = document.getElementById('decQ4').value;
+    const q5 = document.getElementById('decQ5').value;
+    const q6 = document.getElementById('decQ6').value;
+    let rec = '';
+    if(q3 === 'yes') rec = '✅ Database (persistent business data)';
+    else if(q5 === 'yes') rec = q6 === 'yes' ? '✅ Distributed Cache (Redis) – shared across servers' : '✅ IMemoryCache – single-server fast cache';
+    else if(q4 === 'yes') rec = q6 === 'yes' ? '✅ Distributed Session (Redis) – shared across servers' : '✅ Session – server-side per-user state';
+    else if(q2 === 'yes' && q1 === 'yes') rec = '✅ Cookie or LocalStorage – persistent client storage';
+    else if(q2 === 'yes' && q1 === 'no') rec = '✅ SessionStorage or Query String / Hidden Field – short-lived client state';
+    else rec = '✅ TempData or ViewData / ViewBag – request-scoped MVC state';
+    document.getElementById('decisionResult').innerHTML = '<strong>Recommended:</strong> ' + rec;
+  });
+}
+
+// Run init when DOM is ready
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>
